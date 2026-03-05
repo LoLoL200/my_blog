@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Articles</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+     h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+        }
+
+        .article {
+            background-color: #ffffff;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            max-width: 700px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .article:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .article h2 {
+            margin: 0 0 10px;
+            font-size: 24px;
+            color: #1a73e8;
+            transition: color 0.2s;
+        }
+
+        .article h2 a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .article h2 a:hover {
+            color: #1558b0;
+        }
+
+        .article p {
+            margin: 5px 0;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .article .date {
+            font-size: 14px;
+            color: #999;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .article {
+                padding: 15px;
+                margin: 15px;
+            }
+
+            .article h2 {
+                font-size: 20px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+<h1>Articles</h1>
+{{range .}}
+
+
+
+<div class="article">
+    <h2>
+        <a href="/articles/{{.ID}}" class="article-link">{{.Title}}</a>
+    </h2>
+    <p>{{.Content}}</p>
+    <p>{{.Date}}</p>
+</div>
+{{else}}
+<p>No articles found.</p>
+{{end}}
+</body>
+</html>

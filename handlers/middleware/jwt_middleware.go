@@ -1,0 +1,137 @@
+package middleware
+
+import (
+	"context"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+type Claims struct {
+	Username string
+	Role     string
+	jwt.RegisteredClaims
+}
+
+// Wrapper function
+func JWTMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		// Getting the Authorization Headers
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, `{"error":"missing auth header}`, http.StatusUnauthorized)
+			return
+		}
+		// Checking the header format
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == authHeader {
+			http.Error(w, `{"error":"malformed auth header}`, http.StatusUnauthorized)
+			return
+		}
+
+		// JWT parsing and signature verification
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		})
+
+		//Checking the validity of the token
+		if err != nil || !token.Valid {
+			http.Error(w, `{"error":"invalid token}`, http.StatusUnauthorized)
+			return
+		}
+
+		// Passing user data to context
+		ctx := context.WithValue(r.Context(), "user", claims)
+		r = r.WithContext(ctx)
+		// Calling the original handler
+		next.ServeHTTP(w, r)
+	}
+}
+
+func CookieAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		// Gets the auth token cookie from the request.Gets the auth token cookie from the request.
+		cookie, err := r.Cookie("auth_token")
+
+		// Check for an empty token
+		if err != nil || cookie.Value == "" {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		// JWT validation
+		claims, err := validateJWT(cookie.Value)
+		if err != nil || claims == nil {
+			ClearAuthCookie(w)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		// Writes the user to the request context
+		ctx := context.WithValue(r.Context(), "user", claims)
+		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r)
+	}
+}
+
+func validateJWT(tokenString string) (*Claims, error) {
+
+	// Creating a structure for claims
+	claims := &Claims{}
+
+	//Parsing JWT
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+
+	//Validity check
+	if err != nil || !token.Valid {
+		return nil, err
+	}
+
+	return claims, nil
+}
+
+func ClearAuthCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+}
+
+func GenerateJWT(username string) (string, error) {
+	// Creating claims
+	claims := Claims{
+		Username: username,
+		Role:     "admin",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	// Token creation
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+}
+func GetUserFromContext(r *http.Request) *Claims {
+	user, ok := r.Context().Value("user").(*Claims)
+	if !ok {
+		return nil
+	}
+	return user
+}
+
+//Middleware — це функція, яка отримує handler,
+// обгортає його і може виконати код до та після основної обробки запиту.
+// Це схоже на ланцюжок: запит проходить
+// через кілька middleware, перш ніж дійде до кінцевої функції.
