@@ -46,6 +46,8 @@ my_blog/
 ├─ models/          # Data structures and templates
 ├─ templates/       # HTML templates
 ├─ images/          # Images (if any)
+├─ README.md        # Readme file
+├─ dockerfile       # Docker
 ├─ main.go          # Entry point
 ├─ go.mod
 └─ .gitignore       # Ignored files (secrets, .env)
